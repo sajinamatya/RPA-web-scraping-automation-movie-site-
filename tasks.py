@@ -1,20 +1,29 @@
 from robocorp.tasks import task
 from RPA.Browser.Selenium import Selenium
+from RPA.Database import Database
 from RPA.Excel.Files import Files
 import re
-
+import os
+from dotenv import load_dotenv
+import pyodbc
 
 EXCEL_FILE_PATH = "movies.xlsx"
 browser = Selenium()
 
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
+
+
 @task
 def robot_rottentomatoes():
+    """ Main task function to run the Rotten Tomatoes movie data extraction and save to DB and send mail.
+    """
     open_rotten_tomatoes_sites()
     movies_name = get_movie_name_from_excel()
-    search_and_extract_movies(movies_name)
+    results = search_and_extract_movies(movies_name)
+    save_results_to_db(results)
     browser.close_all_browsers()
-    
-   
+
+
 def open_rotten_tomatoes_sites():
     """
     Opens the Rotten Tomatoes website in a web browser.
@@ -35,8 +44,9 @@ def Search_movie_on_rotten_tomatoes(movie_name):
 
 def select_movie_section():
     try:
-        browser.wait_until_element_is_visible("css:span[data-qa='search-filter-text']", timeout=10)
-        browser.click_element_when_visible("xpath=//*[@id='search-results']/nav/ul/li[2]/span")
+        # Always click the 'Movies' filter to ensure only movies are shown
+        browser.wait_until_element_is_visible("css:li[data-filter='movie']", timeout=10)
+        browser.click_element_when_visible("css:li[data-filter='movie']")
     except Exception as e:
         print("    Could not click 'Movies' filter (may already be selected or missing):", e)
 
@@ -65,16 +75,16 @@ def search_and_extract_movies(movies_name):
         processed_count += 1
         movie_dict = {
             'movie_name': movie_name,
-            'tomatometer_score': '',
-            'audience_score': '',
-            'storyline': '',
-            'rating': '',
-            'genres': '',
-            'review_1': '',
-            'review_2': '',
-            'review_3': '',
-            'review_4': '',
-            'review_5': '',
+            'tomatometer_score': 'N/A',
+            'audience_score': 'N/A',
+            'storyline': 'N/A',
+            'rating': 'N/A',
+            'genres': 'N/A',
+            'review_1': 'N/A',
+            'review_2': 'N/A',
+            'review_3': 'N/A',
+            'review_4': 'N/A',
+            'review_5': 'N/A',
             'status': 'No exact match found'
         }
         
@@ -85,8 +95,9 @@ def search_and_extract_movies(movies_name):
             Search_movie_on_rotten_tomatoes(movie_name)
             select_movie_section()
 
-            # Find search results - target the custom elements, not the inner li elements
-            results = browser.find_elements("xpath://search-page-media-row[@data-qa='data-row']")
+ 
+            results = browser.find_elements("xpath://search-page-media-row[@data-qa='data-row']")[:10]  # Limit to 10 results
+  
 
             exact_matches = []
             print(f"Found {len(results)} results for '{movie_name}'")
@@ -199,19 +210,19 @@ def search_and_extract_movies(movies_name):
                     tomatometer = "N/A"
                     audience = "N/A"
                     
-                    # Strategy 1: Direct rt-text slot extraction
+                    #  Direct rt-text slot extraction
                     try:
                         tomatometer_element = browser.find_element("css:rt-text[slot='criticsScore']")
                         tomatometer = browser.get_text(tomatometer_element).strip()
                         if not tomatometer:
                             tomatometer = browser.get_element_attribute(tomatometer_element, "textContent").strip()
                     except:
-                        # Strategy 2: Try data-qa selectors
+                        #  Try data-qa selectors
                         try:
                             tomatometer_element = browser.find_element("css:[data-qa='tomatometer-score']")
                             tomatometer = browser.get_text(tomatometer_element).strip()
                         except:
-                            # Strategy 3: Try score-board attributes
+                            #  Try score-board attributes
                             try:
                                 score_board = browser.find_element("css:score-board")
                                 tomatometer = browser.get_element_attribute(score_board, "tomatometerscore")
@@ -224,12 +235,12 @@ def search_and_extract_movies(movies_name):
                         if not audience:
                             audience = browser.get_element_attribute(audience_element, "textContent").strip()
                     except:
-                        # Strategy 2: Try data-qa selectors
+                        # Try data-qa selectors
                         try:
                             audience_element = browser.find_element("css:[data-qa='audience-score']")
                             audience = browser.get_text(audience_element).strip()
                         except:
-                            # Strategy 3: Try score-board attributes
+                            #  Try score-board attributes
                             try:
                                 score_board = browser.find_element("css:score-board")
                                 audience = browser.get_element_attribute(score_board, "audiencescore")
@@ -242,17 +253,17 @@ def search_and_extract_movies(movies_name):
                     # Extract storyline with multiple strategies
                     storyline = ""
                     try:
-                        # Strategy 1: rt-text with slot="content"
+                        # rt-text with slot="content"
                         storyline_element = browser.find_element("css:rt-text[slot='content']")
                         storyline = browser.get_text(storyline_element).strip()
                     except:
                         try:
-                            # Strategy 2: synopsis-wrap container
+                            #  synopsis-wrap container
                             storyline_element = browser.find_element("css:div.synopsis-wrap rt-text[data-qa='synopsis-value']")
                             storyline = browser.get_text(storyline_element).strip()
                         except:
                             try:
-                                # Strategy 3: Generic synopsis selectors
+                                # Generic synopsis selectors
                                 storyline_element = browser.find_element("css:[data-qa='synopsis'], .synopsis, .plot-synopsis")
                                 storyline = browser.get_text(storyline_element).strip()
                             except:
@@ -261,49 +272,36 @@ def search_and_extract_movies(movies_name):
                     # Extract rating with multiple strategies
                     rating = ""
                     try:
-                        # Strategy 1: rt-text with slot="metadataProp"
+                        # rt-text with slot="metadataProp"
                         rating_element = browser.find_element("css:rt-text[slot='metadataProp']")
                         rating = browser.get_text(rating_element).strip()
                         if rating and rating.endswith(','):
                             rating = rating[:-1].strip()
                     except:
                         try:
-                            # Strategy 2: category-wrap data-qa
+                            #  category-wrap data-qa
                             rating_element = browser.find_element("css:div.category-wrap[data-qa='item'] rt-text[data-qa='item-value']")
                             rating = browser.get_text(rating_element).strip()
                         except:
                             try:
-                                # Strategy 3: Generic rating selectors
+                                # Generic rating selectors
                                 rating_element = browser.find_element("css:[data-qa='rating'], .rating, .mpaa-rating")
                                 rating = browser.get_text(rating_element).strip()
                             except:
                                 pass
                     
-                    # Extract genres with multiple strategies
+                    # Extract genres with direct approach
                     genres = ""
                     try:
-                        # Strategy 1: rt-text with slot="metadataGenre"
-                        genre_element = browser.find_element("css:rt-text[slot='metadataGenre']")
-                        genres = browser.get_text(genre_element).strip()
+                        genre_elements = browser.find_elements("xpath://rt-link[@data-qa='item-value' and contains(@href, 'genres:')]")
+                        genres = ", ".join([browser.get_text(elem).strip() for elem in genre_elements])
                     except:
-                        try:
-                            # Strategy 2: category-wrap rt-link elements
-                            genre_elements = browser.find_elements("css:div.category-wrap[data-qa='item'] rt-link[data-qa='item-value']")
-                            genre_list = [browser.get_text(elem).strip() for elem in genre_elements]
-                            genres = ", ".join(genre_list)
-                        except:
-                            try:
-                                # Strategy 3: Generic genre selectors
-                                genre_elements = browser.find_elements("css:[data-qa='genres'] a, .genres a, .genre-link")
-                                genre_list = [browser.get_text(elem).strip() for elem in genre_elements]
-                                genres = ", ".join(genre_list)
-                            except:
-                                pass
+                        genres = ""
                     
                     # Extract top 5 critic reviews with multiple strategies
                     reviews = []
                     try:
-                        # Strategy 1: media-review-card-critic elements
+                        #  media-review-card-critic elements
                         review_elements = browser.find_elements("css:media-review-card-critic rt-text[data-qa='review-text']")
                         for elem in review_elements[:5]:
                             review_text = browser.get_text(elem).strip()
@@ -312,7 +310,7 @@ def search_and_extract_movies(movies_name):
                     except:
                         pass
                     
-                    # Strategy 2: If not enough reviews, try other selectors
+                    #  try other selectors
                     if len(reviews) < 5:
                         try:
                             additional_selectors = [
@@ -360,7 +358,10 @@ def search_and_extract_movies(movies_name):
                     audience = clean_text(audience) if audience != "N/A" else "N/A"
                     storyline = clean_text(storyline)
                     rating = clean_text(rating)
+                    # Remove any trailing or extra slashes in genres (e.g., 'Drama/ ' -> 'Drama')
                     genres = clean_text(genres)
+                    genres = re.sub(r"\s*/\s*", ", ", genres).strip().strip(',')
+                    genres = re.sub(r",\s*$", "", genres)  # Remove trailing comma if any
                     reviews = [clean_text(review) for review in reviews]
                     
                     # Ensure we have 5 review slots
@@ -368,13 +369,13 @@ def search_and_extract_movies(movies_name):
                         reviews.append("")
                     
                     # Update movie dictionary with extracted data
-                    movie_dict['tomatometer_score'] = tomatometer
-                    movie_dict['audience_score'] = audience
-                    movie_dict['storyline'] = storyline
-                    movie_dict['rating'] = rating
-                    movie_dict['genres'] = genres
+                    movie_dict['tomatometer_score'] = tomatometer if tomatometer else 'N/A'
+                    movie_dict['audience_score'] = audience if audience else 'N/A'
+                    movie_dict['storyline'] = storyline if storyline else 'N/A'
+                    movie_dict['rating'] = rating if rating else 'N/A'
+                    movie_dict['genres'] = genres if genres else 'N/A'
                     for idx, review in enumerate(reviews):
-                        movie_dict[f'review_{idx+1}'] = review
+                        movie_dict[f'review_{idx+1}'] = review if review else 'N/A'
                     movie_dict['status'] = 'Success'
                     
                     print(f"SUCCESS: Extracted data for '{movie_name}'")
@@ -398,3 +399,75 @@ def search_and_extract_movies(movies_name):
     
     print(f"\nCompleted processing {processed_count} movies.")
     return movie_data
+
+
+
+import pyodbc
+
+def save_results_to_db(movie_data):
+    server = os.environ.get("SERVER")
+    database = os.environ.get("DATABASE")
+
+    conn_str = (
+        f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+        f"SERVER={server};"
+        f"DATABASE={database};"
+        f"Trusted_Connection=yes;"
+    )
+
+    try:
+        conn = pyodbc.connect(conn_str)
+        cursor = conn.cursor()
+
+        # Create table if not exists
+        cursor.execute("""
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='movies' AND xtype='U')
+            CREATE TABLE movies (
+                id INT IDENTITY(1,1) PRIMARY KEY,
+                movie_name NVARCHAR(255),
+                tomatometer_score NVARCHAR(50),
+                audience_score NVARCHAR(50),
+                storyline NVARCHAR(MAX),
+                rating NVARCHAR(50),
+                genres NVARCHAR(255),
+                review_1 NVARCHAR(MAX),
+                review_2 NVARCHAR(MAX),
+                review_3 NVARCHAR(MAX),
+                review_4 NVARCHAR(MAX),
+                review_5 NVARCHAR(MAX),
+                status NVARCHAR(50)
+            )
+        """)
+
+        # Insert data
+        insert_sql = """
+            INSERT INTO movies (movie_name, tomatometer_score, audience_score, storyline, 
+                              rating, genres, review_1, review_2, review_3, review_4, review_5, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+
+        for movie in movie_data:
+            cursor.execute(insert_sql, (
+                movie.get("movie_name", ""),
+                movie.get("tomatometer_score", ""),
+                movie.get("audience_score", ""),
+                movie.get("storyline", ""),
+                movie.get("rating", ""),
+                movie.get("genres", ""),
+                movie.get("review_1", ""),
+                movie.get("review_2", ""),
+                movie.get("review_3", ""),
+                movie.get("review_4", ""),
+                movie.get("review_5", ""),
+                movie.get("status", "")
+            ))
+
+        conn.commit()
+        print("Data saved successfully")
+
+    except Exception as e:
+        print(f"Database error: {e}")
+        raise
+    finally:
+        if 'conn' in locals():
+            conn.close()
