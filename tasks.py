@@ -1,11 +1,14 @@
 from robocorp.tasks import task
 from RPA.Browser.Selenium import Selenium
-from RPA.Database import Database
 from RPA.Excel.Files import Files
 import re
 import os
 from dotenv import load_dotenv
 import pyodbc
+from RPA.Email.ImapSmtp import ImapSmtp
+import datetime
+  
+
 
 EXCEL_FILE_PATH = "movies.xlsx"
 browser = Selenium()
@@ -21,6 +24,12 @@ def robot_rottentomatoes():
     movies_name = get_movie_name_from_excel()
     results = search_and_extract_movies(movies_name)
     save_results_to_db(results)
+    excel_path = save_to_excel(results)
+    
+   
+    recipet_email = "sajinamatya88@gmail.com"  
+    send_reviews_excel_via_email(excel_path=excel_path, manual_recipients= recipet_email)
+    
     browser.close_all_browsers()
 
 
@@ -402,7 +411,7 @@ def search_and_extract_movies(movies_name):
 
 
 
-import pyodbc
+
 
 def save_results_to_db(movie_data):
     server = os.environ.get("SERVER")
@@ -471,3 +480,83 @@ def save_results_to_db(movie_data):
     finally:
         if 'conn' in locals():
             conn.close()
+
+def save_to_excel(movie_data, excel_path=None):
+    # Create output-excel folder if it doesn't exist
+    output_folder = os.path.join(os.path.dirname(__file__), 'output-excel')
+    os.makedirs(output_folder, exist_ok=True)
+    if excel_path is None:
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        excel_path = os.path.join(output_folder, f"movie_reviews_{timestamp}.xlsx")
+    excel = Files()
+    # Prepare data for Excel
+    rows = [
+        [
+            movie.get('movie_name', ''),
+            movie.get('tomatometer_score', ''),
+            movie.get('audience_score', ''),
+            movie.get('storyline', ''),
+            movie.get('rating', ''),
+            movie.get('genres', ''),
+            movie.get('review_1', ''),
+            movie.get('review_2', ''),
+            movie.get('review_3', ''),
+            movie.get('review_4', ''),
+            movie.get('review_5', ''),
+            movie.get('status', '')
+        ]
+        for movie in movie_data
+    ]
+    headers = [
+        "Movie Name", "Tomatometer Score", "Audience Score", "Storyline", "Rating", "Genres",
+        "Review 1", "Review 2", "Review 3", "Review 4", "Review 5", "Status"
+    ]
+    excel.create_workbook(excel_path)
+    excel.create_worksheet("Movie Data")
+    excel.append_rows_to_worksheet([headers] + rows)
+    excel.save_workbook(excel_path)
+    excel.close_workbook()
+    return excel_path
+
+def send_reviews_excel_via_email(excel_path="movie_reviews.xlsx", manual_recipients=None, recipients_excel="recipients.xlsx"):
+  
+    if manual_recipients:
+        if isinstance(manual_recipients, str):
+            recipients = [manual_recipients]  # Single email as string
+        elif isinstance(manual_recipients, list):
+            recipients = manual_recipients    # Multiple emails as list
+        else:
+            print("Invalid manual_recipients format. Use string or list.")
+            return
+    else:
+        # Read recipients from Excel
+        excel = Files()
+        excel.open_workbook(recipients_excel)
+        data = excel.read_worksheet_as_table(header=True)
+        excel.close_workbook()
+        recipients = [row["Email"] for row in data if "Email" in row and row["Email"]]
+
+    if not recipients:
+        print("No recipients found!")
+        return
+
+    # Set up email - initialize first, then authorize separately
+    email = ImapSmtp(smtp_server=os.environ.get("SMTP_SERVER"),
+                     smtp_port=int(os.environ.get("SMTP_PORT", 587)))
+    
+    # Authorize with credentials
+    email.authorize(account=os.environ.get("SMTP_USER"),
+                    password=os.environ.get("SMTP_PASSWORD"))
+    
+    subject = "Rotten Tomatoes Movie Reviews extraction Excel file "
+    body = "Here is the excel file "
+    
+    email.send_message(
+        sender=os.environ.get("SMTP_USER"),
+        recipients=recipients,
+        subject=subject,
+        body=body,
+        attachments=[excel_path]
+    )
+    
+    print(f"Email sent to: {', '.join(recipients)}")
