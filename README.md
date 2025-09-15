@@ -58,3 +58,12 @@ For more information, do not forget to check out the following:
 - [Robocorp Documentation -site](https://robocorp.com/docs)
 - [Portal for more examples](https://robocorp.com/portal)
 - Follow our main [robocorp -repository](https://github.com/robocorp/robocorp) as it is the main location where we developed the libraries and the framework.
+
+
+  Separate env file is also needed to be created the variable is given below:
+  SERVER : Name of the server where your database is created  
+  DATABASE : Name of the database 
+  SMTP_SERVER : name of the server for mailing service 
+  SMTP_PORT : SMTP port number 
+  SMTP_USER : Email of the sender 
+  SMTP_PASSWORD : APP password of the gmail
