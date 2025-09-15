@@ -145,7 +145,7 @@ def search_and_extract_movies(movies_name):
                         print(f"    Result {i}: Error getting year from attributes: {e}")
                     
                     # Get title from the custom element link - now we need to look inside the shadow DOM
-                    # Since we can't access shadow DOM directly, we'll use the slotted content
+                
                     try:
                         title_element = browser.find_element("css:a[slot='title']", parent=result)
                         title = browser.get_text(title_element).strip()
