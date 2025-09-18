@@ -1,5 +1,5 @@
 output/
-rotten/
+venv/
 temp/
 .rpa/
 .idea/
@@ -16,3 +16,4 @@ testrun/*
 .~lock*
 *.pkl
 .env
+rotten/
