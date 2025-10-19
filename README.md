@@ -1,69 +1,165 @@
-# Template: Python - Minimal
+# RPA Web Scraping Automation - Movie Site
 
-This template leverages the new [Python framework](https://github.com/robocorp/robocorp), the [libraries](https://github.com/robocorp/robocorp/blob/master/docs/README.md#python-libraries) from to same project as well.
+A Robotic Process Automation (RPA) solution for automated web scraping of movie data from websites. This Python-based project demonstrates efficient data extraction techniques for collecting movie information.
 
-The template provides you with the basic structure of a Python project: logging out of the box and controlling your tasks without fiddling with the base Python stuff. The environment contains the most used libraries, so you do not have to start thinking about those right away. 
+## 🎬 Overview
 
-👉 Other templates are available as well via our tooling and on our [Portal](https://robocorp.com/portal/tag/template)
+This project implements an automated web scraping system designed to extract movie-related information from various movie websites. Built with Python, it provides a robust solution for collecting, processing, and storing movie data efficiently.
 
-## Running
+## ✨ Features
 
-#### VS Code
-1. Get [Robocorp Code](https://robocorp.com/docs/developer-tools/visual-studio-code/extension-features) -extension for VS Code.
-1. You'll get an easy-to-use side panel and powerful command-palette commands for running, debugging, code completion, docs, etc.
+- **Automated Data Extraction**: Scrapes movie information including titles, ratings, release dates, and more
+- **RPA Integration**: Utilizes Robotic Process Automation principles for reliable and repeatable scraping
+- **Data Processing**: Cleans and structures scraped data for easy analysis
+- **Error Handling**: Robust error handling to manage website changes and connection issues
+- **Export Capabilities**: Save scraped data in various formats (CSV, JSON, etc.)
 
-#### Command line
+## 🌿 Branches
 
-1. [Get RCC](https://github.com/robocorp/rcc?tab=readme-ov-file#getting-started)
-1. Use the command: `rcc run`
+This repository is organized into multiple branches, each focusing on different features and implementations:
 
-## Results
+### 🔹 `master`
+The main branch containing the core web scraping functionality and base implementation.
 
-🚀 After running the bot, check out the `log.html` under the `output` -folder.
+### 🔹 `database-connection`
+Implements database integration for storing scraped movie data. This branch includes:
+- Database schema setup
+- Connection handling
+- Data persistence layer
+- CRUD operations for movie records
 
-## Dependencies
+### 🔹 `excel_ouput_and_smtp`
+Adds advanced export and notification features:
+- Excel file generation for scraped data
+- SMTP email integration
+- Automated email reports with attached data
+- Custom formatting for Excel outputs
 
-We strongly recommend getting familiar with adding your dependencies in [conda.yaml](conda.yaml) to control your Python dependencies and the whole Python environment for your automation.
+### 🔹 `robot_format`
+Focuses on RPA framework compatibility and robot file formats:
+- Robot Framework integration
+- Standardized robot file structure
+- Test automation capabilities
+- Enhanced RPA workflow definitions
 
-<details>
-  <summary>🙋‍♂️ "Why not just pip install...?"</summary>
+**To switch between branches:**
+```bash
+git checkout <branch-name>
+```
 
-Think of [conda.yaml](conda.yaml) as an equivalent of the requirements.txt, but much better. 👩‍💻 With `conda.yaml`, you are not just controlling your PyPI dependencies; you control the complete Python environment, which makes things repeatable and easy.
+## 🛠️ Technologies Used
 
-👉 You will probably need to run your code on another machine quite soon, so by using `conda.yaml`:
-- You can avoid `Works on my machine` -cases
-- You do not need to manage Python installations on all the machines
-- You can control exactly which version of Python your automation will run on 
-  - You'll also control the pip version to avoid dep. resolution changes
-- No need for venv, pyenv, ... tooling and knowledge sharing inside your team.
-- Define dependencies in conda.yaml, let our tooling do the heavy lifting.
-- You get all the content of [conda-forge](https://prefix.dev/channels/conda-forge) without any extra tooling
+- **Python**: Core programming language
+- **Web Scraping Libraries**: BeautifulSoup4, Selenium, or Scrapy
+- **RPA Framework**: UiPath, Automation Anywhere, or similar
+- **Data Processing**: Pandas for data manipulation
+- **HTTP Requests**: Requests library for web communication
 
-> Dive deeper with [these](https://github.com/robocorp/rcc/blob/master/docs/recipes.md#what-is-in-condayaml) resources.
+## 📋 Prerequisites
 
-</details>
-<br/>
+Before running this project, ensure you have the following installed:
 
-> The full power of [rpaframework](https://robocorp.com/docs/python/rpa-framework) -libraries is also available on Python as a backup while we implement the new Python libraries.
+- Python 3.7 or higher
+- pip (Python package installer)
+- Web browser driver (ChromeDriver or GeckoDriver for Selenium)
 
-## What now?
+## 🚀 Installation
 
-🚀 Now, go get'em
+1. Clone the repository:
+```bash
+git clone https://github.com/sajinamatya/RPA-web-scraping-automation-movie-site-.git
+cd RPA-web-scraping-automation-movie-site-
+```
 
-Start writing Python and remember that the AI/LLM's out there are getting really good and creating Python code specifically.
+2. Choose your desired branch:
+```bash
+# For database functionality
+git checkout database-connection
 
-👉 Try out [Robocorp ReMark 💬](https://chat.robocorp.com)
+# For Excel and email features
+git checkout excel_ouput_and_smtp
 
-For more information, do not forget to check out the following:
-- [Robocorp Documentation -site](https://robocorp.com/docs)
-- [Portal for more examples](https://robocorp.com/portal)
-- Follow our main [robocorp -repository](https://github.com/robocorp/robocorp) as it is the main location where we developed the libraries and the framework.
+# For Robot Framework format
+git checkout robot_format
+```
 
+3. Install required dependencies:
+```bash
+pip install -r requirements.txt
+```
 
-  Separate env file is also needed to be created the variable is given below:
-  SERVER : Name of the server where your database is created  
-  DATABASE : Name of the database 
-  SMTP_SERVER : name of the server for mailing service 
-  SMTP_PORT : SMTP port number 
-  SMTP_USER : Email of the sender 
-  SMTP_PASSWORD : APP password of the gmail
+4. Configure your settings (if applicable):
+```bash
+# Update configuration file with target URLs and scraping parameters
+```
+
+## 💻 Usage
+
+Run the main scraping script:
+
+```bash
+python main.py
+```
+
+Or import and use specific modules:
+
+```python
+from scraper import MovieScraper
+
+scraper = MovieScraper()
+movies = scraper.scrape_movies()
+scraper.save_data(movies, 'output.csv')
+```
+
+## 📁 Project Structure
+
+```
+RPA-web-scraping-automation-movie-site-/
+│
+├── main.py                 # Main execution script
+├── scraper.py             # Core scraping logic
+├── data_processor.py      # Data cleaning and processing
+├── config.py              # Configuration settings
+├── requirements.txt       # Python dependencies
+├── output/               # Scraped data output directory
+└── README.md             # Project documentation
+```
+
+## ⚙️ Configuration
+
+Customize the scraping behavior by modifying the configuration file:
+
+- Target URLs
+- Scraping intervals
+- Data fields to extract
+- Output format preferences
+- Browser settings (for Selenium)
+
+## 📊 Output
+
+The scraped data typically includes:
+
+- Movie titles
+- Release dates
+- Ratings and reviews
+- Cast and crew information
+- Plot summaries
+- Genre classifications
+- Box office information
+
+## ⚠️ Important Notes
+
+- **Respect robots.txt**: Always check and respect the target website's robots.txt file
+- **Rate Limiting**: Implement appropriate delays between requests to avoid overloading servers
+- **Terms of Service**: Ensure compliance with website terms of service
+- **Legal Considerations**: Web scraping may have legal implications depending on jurisdiction
+
+## 👤 Author
+
+**Sajin Amatya**
+
+- GitHub: [@sajinamatya](https://github.com/sajinamatya)
+
+---
+
+**Disclaimer**: This tool is for educational purposes only. Always ensure you have permission to scrape websites and comply with their terms of service.
